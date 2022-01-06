@@ -76,10 +76,7 @@ class CreateContent extends Component {
           method="post"
           onSubmit={function (e) {
             e.preventDefault();
-            this.props.onSubmit(
-              e.target.title.value,
-              e.target.desc.value
-            );
+            this.props.onSubmit(e.target.title.value, e.target.desc.value);
           }.bind(this)}
         >
           <p>
@@ -87,6 +84,62 @@ class CreateContent extends Component {
           </p>
           <p>
             <textarea name="desc" placeholder="description"></textarea>
+          </p>
+          <p>
+            <input type="submit"></input>
+          </p>
+        </form>
+      </article>
+    );
+  }
+}
+
+class UpdateContent extends Component {
+  constructor(props) {
+    super(props);
+    this.state = {
+      id: this.props.data.id,
+      title: this.props.data.title,
+      desc: this.props.data.desc,
+    };
+  }
+  render() {
+    console.log(this.props.data);
+    return (
+      <article>
+        <h2>Update</h2>
+        <form
+          action="/create_process"
+          method="post"
+          onSubmit={function (e) {
+            e.preventDefault();
+            this.props.onSubmit(
+              this.state.id,
+              this.state.title,
+              this.state.desc);
+          }.bind(this)}
+        >
+          <input type="hidden" name='id' value={this.state.id}></input>
+          <p>
+            <input
+              type="text"
+              name="title"
+              placeholder="title"
+              value={this.state.title}
+              onChange={function (e) {
+                this.setState({[e.target.name]: e.target.value });
+              }.bind(this)}
+            ></input>
+          </p>
+          <p>
+            <textarea
+              name="desc"
+              placeholder="description"
+              value={this.state.desc}
+              onChange={function (e) {
+                this.setState({[e.target.name]: e.target.value})
+              }.bind(this)}
+            ></textarea>
           </p>
           <p>
             <input type="submit"></input>
@@ -124,8 +177,17 @@ class App extends Component {
       ],
     };
   }
-
-  render() {
+  getReadContent() {
+    var i = 0;
+    while (i < this.state.contents.length) {
+      var data = this.state.contents[i];
+      if (data.id === this.state.selected_content_id) {
+        return data;
+      }
+      i = i + 1;
+    }
+  }
+  getContent() {
     var _title,
       _desc,
       _article = null;
@@ -146,19 +208,51 @@ class App extends Component {
       }
       _article = <ReadContent title={_title} desc={_desc}></ReadContent>;
     } else if (this.state.mode === "create") {
-      _article = <CreateContent onSubmit={function(_title, _desc) {
-        var max_content_id = this.state.max_content_id + 1;
-        var _contents = this.state.contents.concat(
-          {id:max_content_id, title:_title, desc: _desc}
-        )                
-        this.setState({
-          max_content_id: max_content_id,
-          contents: _contents,
-        });
-         
-      }.bind(this)}></CreateContent>;
-    }
+      _article = (
+        <CreateContent
+          onSubmit={function (_title, _desc) {
+            var max_content_id = this.state.max_content_id + 1;
+            var _contents = this.state.contents.concat({
+              id: max_content_id,
+              title: _title,
+              desc: _desc,
+            });
+            this.setState({
+              max_content_id: max_content_id,
+              contents: _contents,
+            });
+          }.bind(this)}
+        ></CreateContent>
+      );
+    } else if (this.state.mode === "update") {
+      var _contents = this.getReadContent();
+      _article = (
+        <UpdateContent
+          data={_contents}
+          onSubmit={function (_id, _title, _desc) {
+            var _contents = Array.from(this.state.contents);
+            
+            var i = 0;
+            while ( i < _contents.length) {
+              if (_contents[i].id === _id) {
+                _contents[i] = {id:_id, title: _title, desc:_desc}
+                break;
+              }
+              
+              i = i + 1;
+            }
 
+            this.setState({
+              contents: _contents
+            });
+          }.bind(this)}
+        ></UpdateContent>
+      );
+    }
+    return _article;
+  }
+
+  render() {
     return (
       <div className="App">
         <Subject
@@ -181,12 +275,30 @@ class App extends Component {
         ></TOC>
         <Control
           onChangeMode={function (_mode) {
+            if (_mode === 'delete') {
+              var _contents = Array.from(this.state.contents)
+              if (window.confirm("really?")) {
+                var i = 0;
+                while (i < _contents.length) {
+                  if (_contents[i].id === this.state.selected_content_id) {
+                    _contents.splice(i, 1)
+                    break;
+                  }
+                  i = i + 1;
+                }
+                this.setState({
+                  mode:'welcome',
+                  contents:_contents
+                })
+              }
+            } else {
             this.setState({
               mode: _mode,
             });
+            }
           }.bind(this)}
         ></Control>
-        {_article}
+        {this.getContent()}
       </div>
     );
   }
